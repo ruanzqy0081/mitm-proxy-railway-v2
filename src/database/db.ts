@@ -1,11 +1,52 @@
-import sqlite3 from 'sqlite3';
+import sqlite3, { Database } from 'sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const dbPath = path.join(__dirname, '../../data/licenses.db');
+let dbInstance: Database | null = null;
 
-const db = new sqlite3.Database(dbPath);
+export const getDb = (): Database => {
+  if (!dbInstance) {
+    const dbPath = process.env.DATABASE_URL || ':memory:'; // Use in-memory for Vercel by default
+    dbInstance = new sqlite3.Database(dbPath, (err) => {
+      if (err) {
+        console.error("Erro ao abrir o banco de dados:", err.message);
+      } else {
+        console.log(`Conectado ao banco de dados SQLite: ${dbPath}`);
+        initDb(dbInstance); // Chamar a função de inicialização do banco de dados
+      }
+    });
+  }
+  return dbInstance;
+};
+
+const db = getDb();
+
+function initDb(database: Database) {
+  database.serialize(() => {
+    database.run(`
+      CREATE TABLE IF NOT EXISTS licenses (
+        udid TEXT PRIMARY KEY,
+        device_name TEXT,
+        duration_days INTEGER,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        expires_at TEXT,
+        is_active INTEGER DEFAULT 1,
+        last_used TEXT
+      )
+    `);
+
+    database.run(`
+      CREATE TABLE IF NOT EXISTS logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        udid TEXT,
+        action TEXT,
+        status TEXT,
+        timestamp TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log("Tabelas de licenças e logs verificadas/criadas.");
+  });
+}
 
 // Promisify database methods
 export const dbGet = (query: string, params: any[] = []): Promise<any> => {

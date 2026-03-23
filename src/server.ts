@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import {
+  getDb,
   addLicense,
   checkLicense,
   renewLicense,
@@ -11,10 +12,14 @@ import {
   cleanupExpiredLicenses
 } from './database/db.js';
 
+// Inicializar o banco de dados ao iniciar o aplicativo
+// Isso garantirá que as tabelas sejam criadas se o banco for em memória ou um novo arquivo
+getDb();
+
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000; // Não usado diretamente na Vercel, mas mantido para consistência
 const ADMIN_KEY = process.env.ADMIN_KEY || 'your-secret-admin-key-change-this';
 
 // Middleware
@@ -242,30 +247,5 @@ app.post('/admin/cleanup', requireAdminKey, async (req: Request, res: Response) 
   }
 });
 
-// ============ INICIAR SERVIDOR ============
-
-app.listen(PORT, () => {
-  console.log(`
-╔════════════════════════════════════════════════════════╗
-║  🚀 MITM Proxy License Server (Railway)                ║
-║  Porta: ${PORT}                                            ║
-║  Status: Online                                        ║
-╚════════════════════════════════════════════════════════╝
-
-📍 Endpoints Públicos:
-  GET  /                    - Status do servidor
-  GET  /check-license?udid=<UDID>  - Verificar licença
-
-🔐 Endpoints de Admin (requer X-Admin-Key header):
-  POST /admin/add-license           - Adicionar licença
-  POST /admin/renew-license         - Renovar licença
-  GET  /admin/licenses              - Listar licenças
-  DELETE /admin/delete-license      - Deletar licença
-  GET  /admin/logs                  - Ver logs
-  POST /admin/cleanup               - Limpar expiradas
-
-⚠️  Admin Key: ${ADMIN_KEY === 'your-secret-admin-key-change-this' ? '⚠️ MUDE ISSO!' : '✅ Configurada'}
-  `);
-});
 
 export default app;
